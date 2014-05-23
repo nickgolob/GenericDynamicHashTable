@@ -31,12 +31,35 @@ namespace HashTable
                 this.value = value;
                 this.left = null;
                 this.right = null;
+                this.parent = null;
                 this.red = false;
             }
 
             #endregion
 
             #region [ private utilities ]
+
+            /// <summary>
+            /// hooks up a node as the left or right child of the subject node.
+            /// </summary>
+            /// <param name="newChild"> the new node to be connected </param>
+            /// <param name="left"> denotes wether newChild is to be left or right child </param>
+            /// <remark> this accepts null parameters as newChild </remark>
+            private void quickLink(node newChild, bool left)
+            {
+                if (left) 
+                {
+                    this.left = newChild;
+                }
+                else 
+                {
+                    this.right = newChild;
+                }
+                if (newChild != null)
+                {
+                    newChild.parent = this;
+                }
+            }
 
             /// <summary>
             /// disconnect minimim node (leaf) from subtree
@@ -48,12 +71,35 @@ namespace HashTable
             private node popMin(node parent)
             {
                 if (this.left == null) {
-                    parent.left = this.right;
+                    this.parent.quickLink(this.right, true);
                     return this;
                 }
                 else
                 {
                     return this.left.popMin(this);
+                }
+            }
+
+            /// <summary>
+            /// performs a rotation about the subject node.
+            /// </summary>
+            /// <param name="left"> denotes type of rotation </param>
+            /// <remark> 
+            /// - left rotations assume right child is not null
+            /// - right rotations assume left child is not null
+            ///</remark>
+            private void rotate(bool left)
+            {
+                node replacement;
+                if (left) 
+                {
+                    replacement = this.right;
+                    this.right = replacement.left;
+                    
+                }
+                else
+                {
+                    
                 }
             }
 
@@ -88,6 +134,8 @@ namespace HashTable
                 entry.red = true;
             }
 
+
+            
             public node search(K key) 
             {
                 if (this.key.CompareTo(key) == 0)
