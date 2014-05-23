@@ -10,16 +10,20 @@ namespace HashTable
     {
         #region [ internal declarations ]
 
-        private const int DEFAULT_INITIAL_SIZE = 1;
-        private const float DEFAULT_MAX_LOAD = 2.0F;
-
-        private class node
+        private class node // red black tree sub-root
         {
+            #region [ attributes ]
+
             public K key;
             public V value;
-            public node left;      // pointer to left child
-            public node right;     // pointer to right child
+            public node left;      // reference to left child
+            public node right;     // reference to right child
+            public node parent;    // reference to parent node
             public Boolean red;    // color for red-black components
+
+            #endregion
+
+            #region [ constructors ]
 
             public node(K key, V value)
             {
@@ -29,7 +33,161 @@ namespace HashTable
                 this.right = null;
                 this.red = false;
             }
+
+            #endregion
+
+            #region [ private utilities ]
+
+            /// <summary>
+            /// disconnect minimim node (leaf) from subtree
+            /// </summary>
+            /// <param name="parent"> this is a reference to the parent </param>
+            /// <returns>
+            /// returns the disconnected node
+            /// </returns>
+            private node popMin(node parent)
+            {
+                if (this.left == null) {
+                    parent.left = this.right;
+                    return this;
+                }
+                else
+                {
+                    return this.left.popMin(this);
+                }
+            }
+
+            #endregion
+
+            #region [ public methods ]
+
+            public void insert(node entry)
+            {
+                if (this.key.CompareTo(entry.key) < 0)
+                {
+                    if (this.right == null)
+                    {
+                        this.right = entry;
+                    }
+                    else
+                    {
+                        this.right.insert(entry);
+                    }
+                }
+                else
+                {
+                    if (this.left == null)
+                    {
+                        this.left = entry;
+                    }
+                    else
+                    {
+                        this.left.insert(entry);
+                    }
+                }
+                entry.red = true;
+            }
+
+            public node search(K key) 
+            {
+                if (this.key.CompareTo(key) == 0)
+                {
+                    return this;
+                }
+                else if (this.key.CompareTo(key) < 0)
+                {
+                    if (this.right == null)
+                    {
+                        throw new Exception("key not found");
+                    }
+                    else
+                    {
+                        return this.right.search(key);
+                    }
+                }
+                else
+                {
+                    if (this.left == null)
+                    {
+                        throw new Exception("key not found");
+                    }
+                    else
+                    {
+                        return this.left.search(key);
+                    }
+                }     
+            }
+
+            /// <summary>
+            /// deletes the targeted node, and restructures the tree
+            /// </summary>
+            /// <param name="key"> key of node targeted for removal </param>
+            /// <returns>
+            /// the (possibly new) root of the tree
+            /// </returns>
+            /// <remarks>
+            /// - initial replacement is the minimal node in the right subtree
+            ///     if node has two children
+            /// - this routine assumes 'key' is present, and will crash otherwise
+            /// </remarks>
+            public node delete(K key)
+            {
+                if (this.key.CompareTo(key) == 0)
+                {
+                    if ((this.right != null) && (this.left != null))
+                    {
+                        node replacement = this.popMin(this);
+                        replacement.left = this.left;
+                        replacement.right = this.right;
+                        return replacement;
+                    }
+                    else if ((this.right == null) && (this.left != null))
+                    {
+                        return this.left;
+                    }
+                    else if ((this.right != null) && (this.left == null))
+                    {
+                        return this.right;
+                    }
+                    else
+                    {
+                        return null;
+                    }    
+                }
+                else if (this.key.CompareTo(key) < 0)
+                {
+                    this.right = this.right.delete(key);
+                    return this;
+                }
+                else
+                {
+                    this.left = this.left.delete(key);
+                    return this;
+                }
+            }
+
+            #endregion
         }
+
+        //private class redBlackTree
+        //{
+        //    public node root;
+
+        //    public void insert()
+        //    {
+
+        //    }
+
+        //    public V 
+
+        //}
+
+
+
+
+        private const int DEFAULT_INITIAL_SIZE = 1;
+        private const float DEFAULT_MAX_LOAD = 2.0F;
+
 
         #endregion
 
