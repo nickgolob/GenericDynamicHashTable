@@ -91,79 +91,115 @@ namespace HashTable
             private void rotate(bool left)
             {
                 node replacement;
-                if (left) 
+                if (left)
                 {
                     replacement = this.right;
                     this.right = replacement.left;
-                    
+                    if (replacement.left != null)
+                        replacement.left.parent = this;
+                    replacement.parent = this.parent;
+                    if (this.parent != null)
+                    {
+                        if (this.parent.left == this)
+                            this.parent.left = replacement;
+                        else
+                            this.parent.right = replacement;
+                    }
+                    replacement.left = this;
+                    this.parent = replacement;
                 }
                 else
                 {
-                    
+                    replacement = this.left;
+                    this.left = replacement.right;
+                    if (replacement.right != null)
+                        replacement.right.parent = this;
+                    replacement.parent = this.parent;
+                    if (this.parent != null)
+                    {
+                        if (this.parent.right == this)
+                            this.parent.right = replacement;
+                        else
+                            this.parent.left = replacement;
+                    }
+                    replacement.right = this;
+                    this.parent = replacement;
                 }
             }
 
             #endregion
 
             #region [ public methods ]
-
+            
+            /// <summary>
+            /// inserts target node, and restructures the tree
+            /// </summary>
+            /// <param name="entry">node to be inserted</param>
+            /// <remarks>
+            /// - being a method, the tree must be non-empty
+            /// </remarks>
             public void insert(node entry)
             {
+                // standard insert:
                 if (this.key.CompareTo(entry.key) < 0)
                 {
                     if (this.right == null)
-                    {
                         this.right = entry;
-                    }
                     else
-                    {
                         this.right.insert(entry);
-                    }
                 }
                 else
                 {
                     if (this.left == null)
-                    {
                         this.left = entry;
-                    }
                     else
-                    {
                         this.left.insert(entry);
+                }
+                // RB restructuring:
+                entry.red = true;
+                node temp, temp2;
+                temp = entry;
+                while (temp.parent.red)
+                {
+                    if (temp.parent == temp.parent.parent.left)
+                    {
+                        temp2 = temp.parent.parent.right;
+                        if (temp2.red)
+                        {
+                            temp.parent.red = false;
+                            temp2.red = false;
+                            temp.parent.parent.red = true;
+                            temp = temp.parent.parent;
+
+                        }
+                        else if (temp == temp.parent.right) // not done
+
+
                     }
                 }
-                entry.red = true;
             }
 
-
-            
+            /// <summary>
+            /// finds the node with the matching key
+            /// </summary>
+            /// <param name="key">the key to be matched</param>
+            /// <returns>the entire node</returns>
+            /// <exception cref="key not found">is thrown if key is not present</exception>
             public node search(K key) 
             {
+                node target;
+
                 if (this.key.CompareTo(key) == 0)
-                {
                     return this;
-                }
                 else if (this.key.CompareTo(key) < 0)
-                {
-                    if (this.right == null)
-                    {
-                        throw new Exception("key not found");
-                    }
-                    else
-                    {
-                        return this.right.search(key);
-                    }
-                }
+                    target = this.right;
                 else
-                {
-                    if (this.left == null)
-                    {
-                        throw new Exception("key not found");
-                    }
-                    else
-                    {
-                        return this.left.search(key);
-                    }
-                }     
+                    target = this.left;
+
+                if (target == null)
+                    throw new Exception("key not found");
+                else
+                    return target.search(key);  
             }
 
             /// <summary>
