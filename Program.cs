@@ -10,22 +10,22 @@ namespace HashTable
     {
         #region [ internal declarations ]
 
-        private class node // red black tree sub-root
+        private class Node // red black tree sub-root
         {
             #region [ attributes ]
 
-            public K key;
-            public V value;
-            public node left;      // reference to left child
-            public node right;     // reference to right child
-            public node parent;    // reference to parent node
-            public Boolean red;    // color for red-black components
+            private K key;
+            private V value;
+            private Node left;      // reference to left child
+            private Node right;     // reference to right child
+            private Node parent;    // reference to parent node
+            private Boolean red;    // color for red-black components
 
             #endregion
 
             #region [ constructors ]
 
-            public node(K key, V value)
+            public Node(K key, V value)
             {
                 this.key = key;
                 this.value = value;
@@ -40,12 +40,23 @@ namespace HashTable
             #region [ private utilities ]
 
             /// <summary>
+            /// quickly resets internal attributes
+            /// </summary>
+            private void quickSet()
+            {
+                this.left = null;
+                this.right = null;
+                this.parent = null;
+                this.red = false;
+            }
+
+            /// <summary>
             /// hooks up a node as the left or right child of the subject node.
             /// </summary>
             /// <param name="newChild"> the new node to be connected </param>
             /// <param name="left"> denotes wether newChild is to be left or right child </param>
             /// <remark> this accepts null parameters as newChild </remark>
-            private void quickLink(node newChild, bool left)
+            private void quickLink(Node newChild, bool left)
             {
                 if (left) 
                 {
@@ -64,20 +75,18 @@ namespace HashTable
             /// <summary>
             /// disconnect minimim node (leaf) from subtree
             /// </summary>
-            /// <param name="parent"> this is a reference to the parent </param>
             /// <returns>
             /// returns the disconnected node
             /// </returns>
-            private node popMin(node parent)
+            /// <remarks>
+            /// This now iterates instead of using tail recursion
+            /// </remarks>
+            private Node popMin()
             {
-                if (this.left == null) {
-                    this.parent.quickLink(this.right, true);
-                    return this;
-                }
-                else
-                {
-                    return this.left.popMin(this);
-                }
+                Node temp;
+                for (temp = this; temp.left != null; temp = temp.left) ;
+                temp.parent.quickLink(temp.right, true);
+                return temp;
             }
 
             /// <summary>
@@ -90,7 +99,7 @@ namespace HashTable
             ///</remark>
             private void rotate(bool left)
             {
-                node replacement;
+                Node replacement;
                 if (left)
                 {
                     replacement = this.right;
@@ -127,145 +136,145 @@ namespace HashTable
                 }
             }
 
+            /// <summary>
+            /// subroutine used in removal
+            /// </summary>
+            private static void transplant()
+            {
+                // need this
+            }
+
             #endregion
 
             #region [ public methods ]
             
             /// <summary>
-            /// inserts target node, and restructures the tree
+            /// inserts target node into the specified tree, and restructures the tree
             /// </summary>
+            /// <param name="root">root of tree</param>
             /// <param name="entry">node to be inserted</param>
-            /// <remarks>
-            /// - being a method, the tree must be non-empty
-            /// </remarks>
-            public void insert(node entry)
+            /// <returns> root of tree </returns>
+            public static Node insert(Node root, Node entry)
             {
-                // standard insert:
-                if (this.key.CompareTo(entry.key) < 0)
-                {
-                    if (this.right == null)
-                        this.right = entry;
-                    else
-                        this.right.insert(entry);
-                }
+                entry.quickSet();
+                Node x, y;
+
+                #region [ BST insert ]
+                for (x = root, y = null; 
+                    x != null; 
+                    y = x, x = (x.key.CompareTo(entry.key) < 0 ? x.right : x.left));
+                entry.parent = y;
+                if (y == null)
+                    return entry;
+                else if (y.key.CompareTo(entry.key) < 0)
+                    y.right = entry;
                 else
-                {
-                    if (this.left == null)
-                        this.left = entry;
-                    else
-                        this.left.insert(entry);
-                }
-                // RB restructuring:
+                    y.left = entry;
                 entry.red = true;
-                node temp, temp2;
-                temp = entry;
-                while (temp.parent.red)
+                #endregion
+
+                #region [ RB restructure ]
+                x = entry;
+                while (x.parent.red)
                 {
-                    if (temp.parent == temp.parent.parent.left)
+                    if (x.parent == x.parent.parent.left)
                     {
-                        temp2 = temp.parent.parent.right;
-                        if (temp2.red)
+                        y = x.parent.parent.right;
+                        if (y.red)
                         {
-                            temp.parent.red = false;
-                            temp2.red = false;
-                            temp.parent.parent.red = true;
-                            temp = temp.parent.parent;
-
+                            x.parent.red = false;
+                            y.red = false;
+                            x.parent.parent.red = true;
+                            x = x.parent.parent;
                         }
-                        else if (temp == temp.parent.right) // not done
-
-
+                        else
+                        {
+                            if (x == x.parent.right)
+                            {
+                                x = x.parent;
+                                x.rotate(true);
+                            }
+                            x.parent.red = false;
+                            x.parent.parent.red = true;
+                            x.parent.parent.rotate(false);
+                        }
+                    }
+                    else
+                    {
+                        y = x.parent.parent.left;
+                        if (y.red)
+                        {
+                            x.parent.red = false;
+                            y.red = false;
+                            x.parent.parent.red = true;
+                            x = x.parent.parent;
+                        }
+                        else
+                        {
+                            if (x == x.parent.left)
+                            {
+                                x = x.parent;
+                                x.rotate(false);
+                            }
+                            x.parent.red = false;
+                            x.parent.parent.red = true;
+                            x.parent.parent.rotate(true);
+                        }
                     }
                 }
+                #endregion
+
+                return root;
             }
 
             /// <summary>
             /// finds the node with the matching key
             /// </summary>
+            /// <param name="root">root of tree</param>
             /// <param name="key">the key to be matched</param>
             /// <returns>the entire node</returns>
             /// <exception cref="key not found">is thrown if key is not present</exception>
-            public node search(K key) 
+            public static Node search(Node root, K key) 
             {
-                node target;
-
-                if (this.key.CompareTo(key) == 0)
-                    return this;
-                else if (this.key.CompareTo(key) < 0)
-                    target = this.right;
-                else
-                    target = this.left;
-
-                if (target == null)
-                    throw new Exception("key not found");
-                else
-                    return target.search(key);  
+                Node target;
+                for (target = root; target != null; )
+                {
+                    if (target.key.CompareTo(key) == 0)
+                        return target;
+                    else if (target.key.CompareTo(key) < 0)
+                        target = target.right;
+                    else
+                        target = target.left;
+                }
+                throw new Exception("key not found");
             }
 
             /// <summary>
-            /// deletes the targeted node, and restructures the tree
+            /// removed the targeted node, and restructures the tree
             /// </summary>
-            /// <param name="key"> key of node targeted for removal </param>
+            /// <param name="root">root of tree</param>
+            /// <param name="target">node to be removed (reference required)</param>
             /// <returns>
             /// the (possibly new) root of the tree
             /// </returns>
             /// <remarks>
-            /// - initial replacement is the minimal node in the right subtree
-            ///     if node has two children
-            /// - this routine assumes 'key' is present, and will crash otherwise
             /// </remarks>
-            public node delete(K key)
+            public static Node remove(Node root, Node target)
             {
-                if (this.key.CompareTo(key) == 0)
+                Node x, y;
+                y = target;
+                if (target.left == null)
                 {
-                    if ((this.right != null) && (this.left != null))
-                    {
-                        node replacement = this.popMin(this);
-                        replacement.left = this.left;
-                        replacement.right = this.right;
-                        return replacement;
-                    }
-                    else if ((this.right == null) && (this.left != null))
-                    {
-                        return this.left;
-                    }
-                    else if ((this.right != null) && (this.left == null))
-                    {
-                        return this.right;
-                    }
-                    else
-                    {
-                        return null;
-                    }    
+                    x = target.right;
+
                 }
-                else if (this.key.CompareTo(key) < 0)
-                {
-                    this.right = this.right.delete(key);
-                    return this;
-                }
-                else
-                {
-                    this.left = this.left.delete(key);
-                    return this;
-                }
+
+
+                return root;
             }
 
             #endregion
         }
-
-        //private class redBlackTree
-        //{
-        //    public node root;
-
-        //    public void insert()
-        //    {
-
-        //    }
-
-        //    public V 
-
-        //}
-
 
 
 
@@ -279,7 +288,7 @@ namespace HashTable
 
         private int entries;
         private int maxSize;
-        private node[] table;   
+        private Node[] table;   
         private Func<K, int> map;   // hash function
 
         // optional parameters
@@ -298,7 +307,7 @@ namespace HashTable
         {
             this.entries = 0;
             this.maxSize = maxSize;
-            this.table = new node[maxSize];
+            this.table = new Node[maxSize];
             this.map = map;
             this.loadFactor = loadFactor;
             this.duplicateKeys = duplicateKeys;
@@ -311,7 +320,7 @@ namespace HashTable
         private void expand()
         {
             this.maxSize *= 2;
-            node[] newTable = new node[maxSize];
+            Node[] newTable = new Node[maxSize];
             
         }
 
@@ -322,7 +331,7 @@ namespace HashTable
         public void insert(K key, V value)
         {
             int tableIndex = this.map(key) % this.maxSize;
-            node entry = new node(key, value);
+            Node entry = new Node(key, value);
 
             if (this.table[tableIndex] == null)
             {
@@ -330,7 +339,7 @@ namespace HashTable
             }
             else
             {
-                node scanner;
+                Node scanner;
                 for (scanner = this.table[tableIndex]; 
                     scanner.left != null; 
                     scanner = scanner.left)
