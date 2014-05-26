@@ -423,8 +423,9 @@ namespace HashTable
             tree.insert(3, 'C');
             tree.insert(4, 'D');
             tree.insert(5, 'E');
+            tree.insert(6, 'F');
+            tree.insert(7, 'G');
 
-            Console.ReadKey();
         }
     }
 }

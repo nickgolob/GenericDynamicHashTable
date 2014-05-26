@@ -10,6 +10,8 @@ namespace HashTable
     {
         #region [ internal declarations ]
 
+        public const bool RED = true, BLACK = false, LEFT = true, RIGHT = false;
+
         public class Node
         {
             #region [ attributes ]
@@ -19,7 +21,7 @@ namespace HashTable
             public Node left;      // reference to left child
             public Node right;     // reference to right child
             public Node parent;    // reference to parent node
-            public Boolean red;    // color for red-black components
+            public Boolean color;    // color for red-black components
 
             #endregion
 
@@ -32,7 +34,7 @@ namespace HashTable
                 this.left = null;
                 this.right = null;
                 this.parent = null;
-                this.red = false;
+                this.color = BLACK;
             }
 
             #endregion
@@ -44,7 +46,7 @@ namespace HashTable
                 this.left = null;
                 this.right = null;
                 this.parent = null;
-                this.red = false;
+                this.color = BLACK;
             }
 
             #endregion
@@ -92,49 +94,30 @@ namespace HashTable
         ///</remark>
         private void rotate(Node fulcrum, bool left)
         {
-            Node replacement;
+            Node replacement, temp;
             if (left)
             {
                 replacement = fulcrum.right;
-                fulcrum.right = replacement.left;
-                if (replacement.left != null)
-                    replacement.left.parent = fulcrum;
-                replacement.parent = fulcrum.parent;
-                if (fulcrum.parent != this.root)
-                {
-                    if (fulcrum.parent.left == fulcrum)
-                        fulcrum.parent.left = replacement;
-                    else
-                        fulcrum.parent.right = replacement;
-                }
-                else
-                {
-                    this.root = replacement;
-                }
+                temp = replacement.left;
                 replacement.left = fulcrum;
-                fulcrum.parent = replacement;
+                fulcrum.right = temp;
             }
             else
             {
                 replacement = fulcrum.left;
-                fulcrum.left = replacement.right;
-                if (replacement.right != null)
-                    replacement.right.parent = fulcrum;
-                replacement.parent = fulcrum.parent;
-                if (fulcrum.parent != this.root)
-                {
-                    if (fulcrum.parent.right == fulcrum)
-                        fulcrum.parent.right = replacement;
-                    else
-                        fulcrum.parent.left = replacement;
-                }
-                else
-                {
-                    this.root = replacement;
-                }
+                temp = replacement.right;
                 replacement.right = fulcrum;
-                fulcrum.parent = replacement;
+                fulcrum.left = temp;
             }
+            temp.parent = fulcrum;
+            if (fulcrum == this.root)
+                this.root = replacement;
+            else if (fulcrum.parent.left == fulcrum)
+                fulcrum.parent.left = replacement;
+            else
+                fulcrum.parent.right = replacement;
+            replacement.parent = fulcrum.parent;
+            fulcrum.parent = replacement;
         }
 
         /// <summary>
@@ -152,6 +135,35 @@ namespace HashTable
                 replacement.parent = target.parent;
         }
 
+        /// <summary>
+        /// get grandparent of a node
+        /// </summary>
+        /// <param name="x">node to find grandparent of</param>
+        /// <returns>the grandparent if exists, null otherwise</returns>
+        private Node grandparent(Node x)
+        {
+            if ((x != null) && (x.parent != null))
+                return x.parent.parent;
+            else
+                return null;
+        }
+
+        /// <summary>
+        /// get uncle of a node
+        /// </summary>
+        /// <param name="x">node to find uncle of</param>
+        /// <returns>the uncle if exists, null otherwise</returns>
+        private Node uncle(Node x)
+        {
+            Node grandparent = this.grandparent(x);
+            if (grandparent == null)
+                return null;
+            else if (x.parent == grandparent.left)
+                return grandparent.right;
+            else
+                return grandparent.left;
+        }
+
         #endregion
 
         #region [ public methods ]
@@ -162,13 +174,18 @@ namespace HashTable
         /// <param name="entry">node to be inserted</param>
         public void insert(Node entry)
         {
-            Node x, y;
+            Node x, y = null;
             entry.quickSet();
 
             #region [ BST insert ]
-            for (x = this.root, y = null;
-                x != null;
-                y = x, x = (x.key.CompareTo(entry.key) < 0 ? x.right : x.left)) ;
+            x = this.root;
+            while (x != null) {
+                y = x;
+                if (x.key.CompareTo(entry.key) < 0)
+                    x = x.right;
+                else
+                    x = x.left;
+            }
             entry.parent = y;
             if (y == null)
                 this.root = entry;
@@ -176,59 +193,95 @@ namespace HashTable
                 y.right = entry;
             else
                 y.left = entry;
-            entry.red = true;
+            entry.color = RED;
             #endregion
 
             #region [ RB restructure ]
             x = entry;
-            while ((x != this.root) && (x.parent.red))
+            while ((x != this.root) && (x.parent.color == RED))
             {
-                if (x.parent == x.parent.parent.left)
+                y = this.uncle(x);
+                if ((y != null) && (y.color == RED))
                 {
-                    y = x.parent.parent.right;
-                    if (y.red)
-                    {
-                        x.parent.red = false;
-                        y.red = false;
-                        x.parent.parent.red = true;
-                        x = x.parent.parent;
-                    }
-                    else
-                    {
-                        if (x == x.parent.right)
-                        {
-                            x = x.parent;
-                            this.rotate(x, true);
-                        }
-                        x.parent.red = false;
-                        x.parent.parent.red = true;
-                        this.rotate(x.parent.parent, false);
-                    }
+                    x.parent.color = BLACK;
+                    y.color = BLACK;
+                    x = this.grandparent(x);
+                    x.color = RED;
                 }
                 else
                 {
-                    y = x.parent.parent.left;
-                    if (y.red)
+                    y = this.grandparent(x);
+                    if ((x == x.parent.right) && (x.parent == y.left))
                     {
-                        x.parent.red = false;
-                        y.red = false;
-                        x.parent.parent.red = true;
-                        x = x.parent.parent;
+                        this.rotate(x.parent, LEFT);
+                        x = x.left;
                     }
+                    else if ((x == x.parent.left) && (x.parent == y.right))
+                    {
+                        this.rotate(x.parent, RIGHT);
+                        x = x.right;
+                    }
+                    x.parent.color = BLACK;
+                    y.color = RED;
+                    if (x == x.parent.left)
+                        this.rotate(y, RIGHT);
                     else
-                    {
-                        if (x == x.parent.left)
-                        {
-                            x = x.parent;
-                            this.rotate(x, false);
-                        }
-                        x.parent.red = false;
-                        x.parent.parent.red = true;
-                        this.rotate(x.parent.parent, true);
-                    }
+                        this.rotate(y, RIGHT);
+                    x = y.parent;
                 }
             }
-            this.root.red = false;
+            this.root.color = BLACK;
+
+
+            //x = entry;
+            //while ((x != this.root) && (x.parent.red))
+            //{
+            //    if (x.parent == x.parent.parent.left)
+            //    {
+            //        y = x.parent.parent.right;
+            //        if (y.red)
+            //        {
+            //            x.parent.red = false;
+            //            y.red = false;
+            //            x.parent.parent.red = true;
+            //            x = x.parent.parent;
+            //        }
+            //        else
+            //        {
+            //            if (x == x.parent.right)
+            //            {
+            //                x = x.parent;
+            //                this.rotate(x, true);
+            //            }
+            //            x.parent.red = false;
+            //            x.parent.parent.red = true;
+            //            this.rotate(x.parent.parent, false);
+            //        }
+            //    }
+            //    else
+            //    {
+            //        y = x.parent.parent.left;
+            //        if (y.red)
+            //        {
+            //            x.parent.red = false;
+            //            y.red = false;
+            //            x.parent.parent.red = true;
+            //            x = x.parent.parent;
+            //        }
+            //        else
+            //        {
+            //            if (x == x.parent.left)
+            //            {
+            //                x = x.parent;
+            //                this.rotate(x, false);
+            //            }
+            //            x.parent.red = false;
+            //            x.parent.parent.red = true;
+            //            this.rotate(x.parent.parent, true);
+            //        }
+            //    }
+            //}
+            //this.root.red = false;
             #endregion
 
         }
@@ -268,7 +321,7 @@ namespace HashTable
 
                 #region [BST delete]
                 y = target;
-                bool origColor = y.red;
+                bool origColor = y.color;
                 if (target.left == null)
                 {
                     x = target.right;
@@ -282,7 +335,7 @@ namespace HashTable
                 else
                 {
                     y = this.getMin(target.right);
-                    origColor = y.red;
+                    origColor = y.color;
                     x = y.right;
                     if (y.parent == target)
                     {
@@ -297,42 +350,42 @@ namespace HashTable
                     this.transplant(target, y);
                     y.left = target.left;
                     y.left.parent = y;
-                    y.red = target.red;
+                    y.color = target.color;
                 }
                 #endregion
                 
                 #region [ RB restructure ]
                 if (!origColor)
                 {
-                    while ((x != this.root) && (!x.red))
+                    while ((x != this.root) && (!x.color))
                     {
                         if (x == x.parent.left)
                         {
                             y = x.parent.right;
-                            if (y.red)
+                            if (y.color)
                             {
-                                y.red = false;
-                                x.parent.red = true;
+                                y.color = false;
+                                x.parent.color = true;
                                 this.rotate(x.parent, true);
                                 y = x.parent.right;
                             }
-                            if ((!y.left.red) && (!y.right.red))
+                            if ((!y.left.color) && (!y.right.color))
                             {
-                                y.red = true;
+                                y.color = true;
                                 x = x.parent;
                             }
                             else
                             {
-                                if (!y.right.red)
+                                if (!y.right.color)
                                 {
-                                    y.left.red = false;
-                                    y.red = true;
+                                    y.left.color = false;
+                                    y.color = true;
                                     this.rotate(y, false);
                                     y = x.parent.right;
                                 }
-                                y.red = x.parent.red;
-                                x.parent.red = false;
-                                y.right.red = false;
+                                y.color = x.parent.color;
+                                x.parent.color = false;
+                                y.right.color = false;
                                 this.rotate(x.parent, true);
                                 x = this.root;
                             }
@@ -340,36 +393,36 @@ namespace HashTable
                         else
                         {
                             y = x.parent.left;
-                            if (y.red)
+                            if (y.color)
                             {
-                                y.red = false;
-                                x.parent.red = true;
+                                y.color = false;
+                                x.parent.color = true;
                                 this.rotate(x.parent, false);
                                 y = x.parent.left;
                             }
-                            if ((!y.right.red) && (!y.left.red))
+                            if ((!y.right.color) && (!y.left.color))
                             {
-                                y.red = true;
+                                y.color = true;
                                 x = x.parent;
                             }
                             else
                             {
-                                if (!y.left.red)
+                                if (!y.left.color)
                                 {
-                                    y.right.red = false;
-                                    y.red = true;
+                                    y.right.color = false;
+                                    y.color = true;
                                     this.rotate(y, true);
                                     y = x.parent.left;
                                 }
-                                y.red = x.parent.red;
-                                x.parent.red = false;
-                                y.left.red = false;
+                                y.color = x.parent.color;
+                                x.parent.color = false;
+                                y.left.color = false;
                                 this.rotate(x.parent, false);
                                 x = this.root;
                             }
                         }
                     }
-                    x.red = false;
+                    x.color = false;
                 }
                 #endregion
             }
