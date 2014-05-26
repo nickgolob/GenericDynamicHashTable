@@ -72,6 +72,14 @@ namespace HashTable
                 }
             }
 
+            private Node getMin()
+            {
+                Node x = this;
+                while (x.left != null)
+                    x = x.left;
+                return x;
+            }
+
             /// <summary>
             /// disconnect minimim node (leaf) from subtree
             /// </summary>
@@ -137,11 +145,22 @@ namespace HashTable
             }
 
             /// <summary>
-            /// subroutine used in removal
+            /// replaces the subtree rooted at target with the subtree rooted at replacement
             /// </summary>
-            private static void transplant()
+            /// <returns>
+            /// The root of the tree
+            /// </returns>
+            private static Node transplant(Node root, Node target, Node replacement)
             {
-                // need this
+                if (target == root)
+                    return replacement;
+                else if (target == target.parent.left)
+                    target.parent.left = replacement;
+                else
+                    target.parent.right = replacement;
+                if (replacement != null)
+                    replacement.parent = target.parent;
+                return root;
             }
 
             #endregion
@@ -262,20 +281,66 @@ namespace HashTable
             public static Node remove(Node root, Node target)
             {
                 Node x, y;
+
+                // delete
                 y = target;
+                bool origColor = y.red;
                 if (target.left == null)
                 {
                     x = target.right;
-
+                    root = Node.transplant(root, target, target.right);
+                }
+                else if (target.right == null)
+                {
+                    x = target.left;
+                    root = Node.transplant(root, target, target.left);
+                }
+                else
+                {
+                    y = target.right.getMin();
+                    origColor = y.red;
+                    x = y.right;
+                    if (y.parent == target)
+                    {
+                        x.parent = y;
+                    }
+                    else
+                    {
+                        root = Node.transplant(root, y, y.right);
+                        y.right = target.right;
+                        y.right.parent = y;
+                    }
+                    root = Node.transplant(root, target, y);
+                    y.left = target.left;
+                    y.left.parent = y;
+                    y.red = target.red;
                 }
 
+                // restructure
+                if (!origColor)
+                {
+                    while ((x != root) && (!x.red))
+                    {
+                        if (x == x.parent.left)
+                        {
+                            y = x.parent.right;
+                            if (y.red)
+                            {
+                                y.red = false;
+                                x.parent.red = true;
+                                x.parent.rotate(true);
+                            }
+                        }
+                    }
+                }
+                    
 
                 return root;
+
             }
 
             #endregion
         }
-
 
 
         private const int DEFAULT_INITIAL_SIZE = 1;
@@ -330,41 +395,12 @@ namespace HashTable
 
         public void insert(K key, V value)
         {
-            int tableIndex = this.map(key) % this.maxSize;
-            Node entry = new Node(key, value);
-
-            if (this.table[tableIndex] == null)
-            {
-                this.table[tableIndex] = entry;
-            }
-            else
-            {
-                Node scanner;
-                for (scanner = this.table[tableIndex]; 
-                    scanner.left != null; 
-                    scanner = scanner.left)
-                {
-                    if (this.duplicateKeys && scanner.key.CompareTo(key) == 0)
-                    {
-                        throw new Exception("duplicate key");
-                    }
-                }
-                scanner.left = entry;
-            }
-
-            this.entries += 1;
-
-            if (this.entries / this.maxSize > this.loadFactor)
-            {
-                this.expand();
-            }
+            
         }
 
-        public V search(K key)
+        public void search(K key)
         {
-            int tableIndex = this.map(key) % this.maxSize;
-
-            return this.table[tableIndex].value;
+            
         }
 
         public void delete(K Key)
@@ -376,14 +412,19 @@ namespace HashTable
 
     }
 
-
-
-
     class Program
     {
         static void Main(string[] args)
         {
+            RedBlackTree<int, char> tree = new RedBlackTree<int,char>();
 
+            tree.insert(2, 'B');
+            tree.insert(1, 'A');
+            tree.insert(3, 'C');
+            tree.insert(4, 'D');
+            tree.insert(5, 'E');
+
+            Console.ReadKey();
         }
     }
 }
