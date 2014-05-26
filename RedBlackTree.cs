@@ -137,6 +137,53 @@ namespace HashTable
         }
 
         /// <summary>
+        /// two nodes trade places in the tree, and are recolored to
+        /// each others colors (to preserve structure).
+        /// </summary>
+        private void trade(Node target, Node replacement)
+        {
+            // trade colors
+            bool tempColor = target.color;
+            target.color = replacement.color;
+            replacement.color = tempColor;
+
+            // trade left childs
+            Node temp = target.left;
+            target.left = replacement.left;
+            replacement.left = temp;
+            if (replacement.left != null)
+                replacement.left.parent = replacement;
+            if (target.left != null)
+                target.left.parent = target;
+
+            // trade right childs
+            temp = target.right;
+            target.right = replacement.right;
+            replacement.right = temp;
+            if (replacement.right != null)
+                replacement.right.parent = replacement;
+            if (target.right != null)
+                target.right.parent = target;
+
+            // trade parents
+            temp = target.parent;
+            target.parent = replacement.parent;
+            replacement.parent = temp;
+            if (replacement.parent == null)
+                this.root = replacement;
+            else if (replacement.parent.left == target)
+                replacement.parent.left = replacement;
+            else
+                replacement.parent.right = replacement;
+            if (target.parent == null)
+                this.root = target;
+            else if (target.parent.left == replacement)
+                target.parent.left = target;
+            else
+                target.parent.right = target;
+        }
+
+        /// <summary>
         /// get grandparent of a node
         /// </summary>
         /// <param name="x">node to find grandparent of</param>
@@ -339,6 +386,53 @@ namespace HashTable
 
 
 
+
+            //// wikipedias:
+            //// if node has two children, trade it with minimum in right subtree
+            //if ((target.left != null) && (target.right != null))
+            //{
+            //    this.trade(target, this.getMin(target.right));
+            //    x = target.right;
+            //}
+            //else if (target.right != null)
+            //{
+            //    x = target.right;
+            //}
+            //else
+            //{
+            //    x = target.left;
+            //}
+
+            //// remove target from subtree, replace with new right child
+            //this.transplant(target, x);
+
+            //// restructure about the replacing child node
+            //if (target.color == BLACK)
+            //{
+            //    if ((x != null) && (x.color == RED))
+            //    {
+            //        x.color = BLACK;
+            //    }
+            //    else if (this.root != x) // x is Black
+            //    {
+            //        y = this.sibling(x);
+            //        if (y.color == RED)
+            //        {
+            //            x.parent.color = RED;
+            //            y.color = BLACK;
+            //            if (x == x.parent.left)
+            //                this.rotate(x.parent, LEFT);
+            //            else
+            //                this.rotate(x.parent, RIGHT);
+            //        }
+            //        y = this.sibling(x);
+            //        if (x.parent.color == BLACK
+            //    }
+            //}
+
+
+
+            //// algos:
             //#region [BST delete]
             //y = target;
             //bool origColor = y.color;
