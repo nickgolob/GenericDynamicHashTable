@@ -49,6 +49,25 @@ namespace HashTable
                 this.color = BLACK;
             }
 
+            public Node grandparent()
+            {
+                if ((this != null) && (this.parent != null))
+                    return this.parent.parent;
+                else
+                    return null;
+            }
+
+            public Node uncle()
+            {
+                Node grandparent = this.grandparent();
+                if (grandparent == null)
+                    return null;
+                else if (this.parent == grandparent.left)
+                    return grandparent.right;
+                else
+                    return grandparent.left;
+            }
+
             #endregion
         }
 
@@ -212,86 +231,6 @@ namespace HashTable
                 return grandparent.left;
         }
 
-        /// <summary>
-        /// get sibling of a node
-        /// </summary>
-        /// <param name="x">node to find sibling of</param>
-        /// <returns>the sibling if exists, null otherwise</returns>
-        private Node sibling(Node x)
-        {
-            if (x == this.root)
-                return null;
-            else if (x == x.parent.left)
-                return x.parent.right;
-            else
-                return x.parent.left;
-        }
-
-        private void removeRestructure(Node x)
-        {
-            if (x != this.root)
-            {
-                Node s = this.sibling(x);
-                if ((s != null) && (s.color == RED))
-                {
-                    x.parent.color = RED;
-                    s.color = BLACK;
-                    if (x == x.parent.left)
-                        this.rotate(x.parent, LEFT);
-                    else
-                        this.rotate(x.parent, RIGHT);
-                }
-                if ((x.parent.color == BLACK) &&
-                    (s.color == BLACK) &&
-                    (s.left.color == BLACK) &&
-                    (x.right.color == BLACK))
-                {
-                    s.color = RED;
-                    this.removeRestructure(x.parent);
-                }
-                else if ((x.parent.color == RED) &&
-                    (s.color == BLACK) &&
-                    (s.left.color == BLACK) &&
-                    (s.right.color == BLACK))
-                {
-                    s.color = RED;
-                    x.parent.color = BLACK;
-                }
-                else
-                {
-                    if ((x == x.parent.left) &&
-                        (s.right.color == BLACK) &&
-                        (s.left.color == RED))
-                    {
-                        s.color = RED;
-                        s.left.color = BLACK;
-                        this.rotate(s, RIGHT);
-                    } else if ((x == x.parent.right) &&
-                        (s.left.color == BLACK) &&
-                        (s.right.color == RED))
-                    {
-                        s.color = RED;
-                        s.right.color = BLACK;
-                        this.rotate(s, LEFT);
-                    }
-
-                    s.color = x.parent.color;
-                    x.parent.color = BLACK;
-
-                    if (x == x.parent.left)
-                    {
-                        s.right.color = BLACK;
-                        this.rotate(x.parent, LEFT);
-                    }
-                    else
-                    {
-                        s.left.color = BLACK;
-                        this.rotate(x.parent, RIGHT);
-                    }
-                }
-            }
-        }
-
         #endregion
 
         #region [ public methods ]
@@ -328,17 +267,17 @@ namespace HashTable
             x = entry;
             while ((x != this.root) && (x.parent.color == RED))
             {
-                y = this.uncle(x);
+                y = x.uncle();
                 if ((y != null) && (y.color == RED))
                 {
                     x.parent.color = BLACK;
                     y.color = BLACK;
-                    x = this.grandparent(x);
+                    x = x.grandparent();
                     x.color = RED;
                 }
                 else
                 {
-                    y = this.grandparent(x);
+                    y = x.grandparent();
                     if ((x == x.parent.right) && (x.parent == y.left))
                     {
                         this.rotate(x.parent, LEFT);
@@ -445,173 +384,112 @@ namespace HashTable
         /// <param name="target">node to be removed (reference required)</param>
         public void remove(Node target)
         {
-            Node x, y;
+            Node x, y, w;
+            bool side = false;
 
-            //// Eclipse:
-            //// if node has two children, trade it with minimum in right subtree
-            //if ((target.left != null) && (target.right != null))
-            //{
-            //    this.trade(target, this.getMin(target.right));
-            //    x = target.right;
-            //}
-            //else if (target.right != null)
-            //{
-            //    x = target.right;
-            //}
-            //else
-            //{
-            //    x = target.left;
-            //}
+            #region [ BST deletion ]
 
-            //// fixup
-            //if (target.color == BLACK)
-            //{
-
-            //}
-
-
-            //if (target.parent == null)
-            //    this.root = x;
-            //else
-            //    this.transplant(x);
-
-
-            // wikipedias:
-            // if node has two children, trade it with minimum in right subtree
+            // make target have only one child
             if ((target.left != null) && (target.right != null))
             {
                 this.trade(target, this.getMin(target.right));
                 x = target.right;
             }
             else if (target.right != null)
-            {
                 x = target.right;
-            }
+            else
+                x = target.left;
+
+            // replace with (possible null child)
+            y = target.parent; // track parent
+            if (target.parent == null)
+                this.root = x;
             else
             {
-                x = target.left;
-            }
-
-            // remove target from subtree, replace with new right child
-            this.transplant(target, x);
-
-            // restructure about the replacing child node
-            if (target.color == BLACK)
-            {
-                if ((x != null) && (x.color == RED))
-                    x.color = BLACK;
+                if (x == target.parent.left)
+                    side = LEFT;
                 else
-                    this.removeRestructure(x);
+                    side = RIGHT;
+                this.transplant(target, x);
             }
 
+            #endregion
 
-            //// algos:
-            //#region [BST delete]
-            //y = target;
-            //bool origColor = y.color;
-            //if (target.left == null)
-            //{
-            //    x = target.right;
-            //    this.transplant(target, target.right);
-            //}
-            //else if (target.right == null)
-            //{
-            //    x = target.left;
-            //    this.transplant(target, target.left);
-            //}
-            //else
-            //{
-            //    y = this.getMin(target.right);
-            //    origColor = y.color;
-            //    x = y.right;
-            //    if (y.parent == target)
-            //    {
-            //        x.parent = y;
-            //    }
-            //    else
-            //    {
-            //        this.transplant(y, y.right);
-            //        y.right = target.right;
-            //        y.right.parent = y;
-            //    }
-            //    this.transplant(target, y);
-            //    y.left = target.left;
-            //    y.left.parent = y;
-            //    y.color = target.color;
-            //}
-            //#endregion
-                
-            //#region [ RB restructure ]
-            //if (!origColor)
-            //{
-            //    while ((x != this.root) && (!x.color))
-            //    {
-            //        if (x == x.parent.left)
-            //        {
-            //            y = x.parent.right;
-            //            if (y.color)
-            //            {
-            //                y.color = false;
-            //                x.parent.color = true;
-            //                this.rotate(x.parent, true);
-            //                y = x.parent.right;
-            //            }
-            //            if ((!y.left.color) && (!y.right.color))
-            //            {
-            //                y.color = true;
-            //                x = x.parent;
-            //            }
-            //            else
-            //            {
-            //                if (!y.right.color)
-            //                {
-            //                    y.left.color = false;
-            //                    y.color = true;
-            //                    this.rotate(y, false);
-            //                    y = x.parent.right;
-            //                }
-            //                y.color = x.parent.color;
-            //                x.parent.color = false;
-            //                y.right.color = false;
-            //                this.rotate(x.parent, true);
-            //                x = this.root;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            y = x.parent.left;
-            //            if (y.color)
-            //            {
-            //                y.color = false;
-            //                x.parent.color = true;
-            //                this.rotate(x.parent, false);
-            //                y = x.parent.left;
-            //            }
-            //            if ((!y.right.color) && (!y.left.color))
-            //            {
-            //                y.color = true;
-            //                x = x.parent;
-            //            }
-            //            else
-            //            {
-            //                if (!y.left.color)
-            //                {
-            //                    y.right.color = false;
-            //                    y.color = true;
-            //                    this.rotate(y, true);
-            //                    y = x.parent.left;
-            //                }
-            //                y.color = x.parent.color;
-            //                x.parent.color = false;
-            //                y.left.color = false;
-            //                this.rotate(x.parent, false);
-            //                x = this.root;
-            //            }
-            //        }
-            //    }
-            //    x.color = false;
-            //}
-            //#endregion
+            #region [ RB restructure ]
+
+            if (target.color == BLACK)
+            { // restructuring required
+                while ((x != this.root) && ((x == null) || (x.color == BLACK)))
+                {
+                    if (side == LEFT) // x is the left child
+                    {
+                        w = y.right;
+                        if ((w != null) && (w.color == RED))
+                        {
+                            w.color = BLACK;
+                            y.color = RED;
+                            this.rotate(y, LEFT);
+                            w = y.right;
+                        }
+                        if (((w.left == null) || (w.left.color == BLACK)) &&
+                            ((w.right == null) || (w.right.color == BLACK)))
+                        {
+                            w.color = RED;
+                            x = y;
+                        }
+                        else
+                        {
+                            if ((w.right == null) || (w.right.color == BLACK))
+                            {
+                                w.left.color = BLACK;
+                                w.color = RED;
+                                this.rotate(w, RIGHT);
+                                w = y.right;
+                            }
+                            w.color = y.color;
+                            y.color = BLACK;
+                            w.right.color = BLACK;
+                            this.rotate(y, LEFT);
+                            x = this.root;
+                        }
+                    }
+                    else // rights and lefts reversed:
+                    {
+                        w = y.left;
+                        if ((w != null) && (w.color == RED))
+                        {
+                            w.color = BLACK;
+                            y.color = RED;
+                            this.rotate(y, RIGHT);
+                            w = y.left;
+                        }
+                        if (((w.right == null) || (w.right.color == BLACK)) &&
+                            ((w.left == null) || (w.left.color == BLACK)))
+                        {
+                            w.color = RED;
+                            x = y;
+                        }
+                        else
+                        {
+                            if ((w.left == null) || (w.left.color == BLACK))
+                            {
+                                w.right.color = BLACK;
+                                w.color = RED;
+                                this.rotate(w, LEFT);
+                                w = y.left;
+                            }
+                            w.color = y.color;
+                            y.color = BLACK;
+                            w.left.color = BLACK;
+                            this.rotate(y, RIGHT);
+                            x = this.root;
+                        }
+                    }
+                }
+                x.color = BLACK;
+            }
+
+            #endregion
 
         }
         public void delete(K key)
