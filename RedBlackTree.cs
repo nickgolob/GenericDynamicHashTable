@@ -73,7 +73,6 @@ namespace HashTable
 
         #endregion
 
-
         #region [ attributes ]
 
         private Node root;
@@ -202,35 +201,6 @@ namespace HashTable
                 target.parent.right = target;
         }
 
-        /// <summary>
-        /// get grandparent of a node
-        /// </summary>
-        /// <param name="x">node to find grandparent of</param>
-        /// <returns>the grandparent if exists, null otherwise</returns>
-        private Node grandparent(Node x)
-        {
-            if ((x != null) && (x.parent != null))
-                return x.parent.parent;
-            else
-                return null;
-        }
-
-        /// <summary>
-        /// get uncle of a node
-        /// </summary>
-        /// <param name="x">node to find uncle of</param>
-        /// <returns>the uncle if exists, null otherwise</returns>
-        private Node uncle(Node x)
-        {
-            Node grandparent = this.grandparent(x);
-            if (grandparent == null)
-                return null;
-            else if (x.parent == grandparent.left)
-                return grandparent.right;
-            else
-                return grandparent.left;
-        }
-
         #endregion
 
         #region [ public methods ]
@@ -298,57 +268,6 @@ namespace HashTable
                 }
             }
             this.root.color = BLACK;
-
-
-            //x = entry;
-            //while ((x != this.root) && (x.parent.red))
-            //{
-            //    if (x.parent == x.parent.parent.left)
-            //    {
-            //        y = x.parent.parent.right;
-            //        if (y.red)
-            //        {
-            //            x.parent.red = false;
-            //            y.red = false;
-            //            x.parent.parent.red = true;
-            //            x = x.parent.parent;
-            //        }
-            //        else
-            //        {
-            //            if (x == x.parent.right)
-            //            {
-            //                x = x.parent;
-            //                this.rotate(x, true);
-            //            }
-            //            x.parent.red = false;
-            //            x.parent.parent.red = true;
-            //            this.rotate(x.parent.parent, false);
-            //        }
-            //    }
-            //    else
-            //    {
-            //        y = x.parent.parent.left;
-            //        if (y.red)
-            //        {
-            //            x.parent.red = false;
-            //            y.red = false;
-            //            x.parent.parent.red = true;
-            //            x = x.parent.parent;
-            //        }
-            //        else
-            //        {
-            //            if (x == x.parent.left)
-            //            {
-            //                x = x.parent;
-            //                this.rotate(x, false);
-            //            }
-            //            x.parent.red = false;
-            //            x.parent.parent.red = true;
-            //            this.rotate(x.parent.parent, true);
-            //        }
-            //    }
-            //}
-            //this.root.red = false;
             #endregion
 
         }
@@ -401,12 +320,12 @@ namespace HashTable
                 x = target.left;
 
             // replace with (possible null child)
-            y = target.parent; // track parent
-            if (target.parent == null)
+            y = target.parent;
+            if (y == null)
                 this.root = x;
             else
             {
-                if (x == target.parent.left)
+                if (target == y.left)
                     side = LEFT;
                 else
                     side = RIGHT;

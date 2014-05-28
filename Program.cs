@@ -427,6 +427,9 @@ namespace HashTable
             tree.insert(7, 'G');
             tree.delete(4);
             tree.delete(1);
+            tree.delete(7);
+            tree.delete(6);
+            tree.delete(5);
 
         }
     }
