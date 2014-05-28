@@ -9,24 +9,18 @@ namespace HashTable
     public class RedBlackTree<K, V> where K : IComparable
     {
         #region [ internal declarations ]
-
         public const bool RED = true, BLACK = false, LEFT = true, RIGHT = false;
 
         public class Node
         {
             #region [ attributes ]
-
             public K key;
             public V value;
-            public Node left;      // reference to left child
-            public Node right;     // reference to right child
-            public Node parent;    // reference to parent node
-            public Boolean color;    // color for red-black components
-
+            public Node left, right, parent;
+            public Boolean color;
             #endregion
 
             #region [ constructors ]
-
             public Node(K key, V value)
             {
                 this.key = key;
@@ -36,11 +30,9 @@ namespace HashTable
                 this.parent = null;
                 this.color = BLACK;
             }
-
             #endregion
 
             #region [ methods ]
-
             public void quickSet()
             {
                 this.left = null;
@@ -48,7 +40,6 @@ namespace HashTable
                 this.parent = null;
                 this.color = BLACK;
             }
-
             public Node grandparent()
             {
                 if ((this != null) && (this.parent != null))
@@ -56,7 +47,6 @@ namespace HashTable
                 else
                     return null;
             }
-
             public Node uncle()
             {
                 Node grandparent = this.grandparent();
@@ -67,29 +57,22 @@ namespace HashTable
                 else
                     return grandparent.left;
             }
-
             #endregion
         }
-
         #endregion
 
         #region [ attributes ]
-
         private Node root;
-
         #endregion
 
         #region [ constructors ]
-
         public RedBlackTree()
         {
             this.root = null;
         }
-
         #endregion
 
         #region [ private utilities ]
-
         /// <summary>
         /// gets the minimum element of a specified subtree
         /// </summary>
@@ -101,7 +84,6 @@ namespace HashTable
                 x = x.left;
             return x;
         }
-
         /// <summary>
         /// performs a rotation about the target node.
         /// </summary>
@@ -138,7 +120,6 @@ namespace HashTable
             replacement.parent = fulcrum.parent;
             fulcrum.parent = replacement;
         }
-
         /// <summary>
         /// replaces the subtree rooted at target with the subtree rooted at replacement
         /// </summary>
@@ -153,7 +134,6 @@ namespace HashTable
             if (replacement != null)
                 replacement.parent = target.parent;
         }
-
         /// <summary>
         /// two nodes trade places in the tree, and are recolored to
         /// each others colors (to preserve structure).
@@ -200,7 +180,6 @@ namespace HashTable
             else
                 target.parent.right = target;
         }
-
         #endregion
 
         #region [ public methods ]
@@ -303,11 +282,10 @@ namespace HashTable
         /// <param name="target">node to be removed (reference required)</param>
         public void remove(Node target)
         {
-            Node x, y, w;
+            Node x, y, z;
             bool side = false;
 
             #region [ BST deletion ]
-
             // make target have only one child
             if ((target.left != null) && (target.right != null))
             {
@@ -318,7 +296,6 @@ namespace HashTable
                 x = target.right;
             else
                 x = target.left;
-
             // replace with (possible null child)
             y = target.parent;
             if (y == null)
@@ -331,75 +308,73 @@ namespace HashTable
                     side = RIGHT;
                 this.transplant(target, x);
             }
-
             #endregion
 
             #region [ RB restructure ]
-
             if (target.color == BLACK)
             { // restructuring required
                 while ((x != this.root) && ((x == null) || (x.color == BLACK)))
                 {
                     if (side == LEFT) // x is the left child
                     {
-                        w = y.right;
-                        if ((w != null) && (w.color == RED))
+                        z = y.right;
+                        if ((z != null) && (z.color == RED))
                         {
-                            w.color = BLACK;
+                            z.color = BLACK;
                             y.color = RED;
                             this.rotate(y, LEFT);
-                            w = y.right;
+                            z = y.right;
                         }
-                        if (((w.left == null) || (w.left.color == BLACK)) &&
-                            ((w.right == null) || (w.right.color == BLACK)))
+                        if (((z.left == null) || (z.left.color == BLACK)) &&
+                            ((z.right == null) || (z.right.color == BLACK)))
                         {
-                            w.color = RED;
+                            z.color = RED;
                             x = y;
                         }
                         else
                         {
-                            if ((w.right == null) || (w.right.color == BLACK))
+                            if ((z.right == null) || (z.right.color == BLACK))
                             {
-                                w.left.color = BLACK;
-                                w.color = RED;
-                                this.rotate(w, RIGHT);
-                                w = y.right;
+                                z.left.color = BLACK;
+                                z.color = RED;
+                                this.rotate(z, RIGHT);
+                                z = y.right;
                             }
-                            w.color = y.color;
+                            z.color = y.color;
                             y.color = BLACK;
-                            w.right.color = BLACK;
+                            z.right.color = BLACK;
                             this.rotate(y, LEFT);
                             x = this.root;
                         }
                     }
                     else // rights and lefts reversed:
                     {
-                        w = y.left;
-                        if ((w != null) && (w.color == RED))
+                        z = y.left;
+                        if ((z != null) && (z.color == RED))
                         {
-                            w.color = BLACK;
+                            z.color = BLACK;
                             y.color = RED;
                             this.rotate(y, RIGHT);
-                            w = y.left;
+                            z = y.left;
                         }
-                        if (((w.right == null) || (w.right.color == BLACK)) &&
-                            ((w.left == null) || (w.left.color == BLACK)))
+                        if (((z.right == null) || (z.right.color == BLACK)) &&
+                            ((z.left == null) || (z.left.color == BLACK)))
                         {
-                            w.color = RED;
+                            z.color = RED;
                             x = y;
                         }
                         else
                         {
-                            if ((w.left == null) || (w.left.color == BLACK))
+                            if ((z.left == null) || (z.left.color == BLACK))
                             {
-                                w.right.color = BLACK;
-                                w.color = RED;
-                                this.rotate(w, LEFT);
-                                w = y.left;
+                                z.right.color = BLACK;
+                                z.color = RED;
+                                this.rotate(z, LEFT);
+                                z = y.left;
                             }
-                            w.color = y.color;
+                            z.color = y.color;
                             y.color = BLACK;
-                            w.left.color = BLACK;
+                            z.left.color = BLACK;
                             this.rotate(y, RIGHT);
                             x = this.root;
                         }
@@ -407,7 +382,6 @@ namespace HashTable
                 }
                 x.color = BLACK;
             }
-
             #endregion
 
         }
