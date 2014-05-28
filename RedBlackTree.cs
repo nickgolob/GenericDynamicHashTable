@@ -227,6 +227,71 @@ namespace HashTable
                 return x.parent.left;
         }
 
+        private void removeRestructure(Node x)
+        {
+            if (x != this.root)
+            {
+                Node s = this.sibling(x);
+                if ((s != null) && (s.color == RED))
+                {
+                    x.parent.color = RED;
+                    s.color = BLACK;
+                    if (x == x.parent.left)
+                        this.rotate(x.parent, LEFT);
+                    else
+                        this.rotate(x.parent, RIGHT);
+                }
+                if ((x.parent.color == BLACK) &&
+                    (s.color == BLACK) &&
+                    (s.left.color == BLACK) &&
+                    (x.right.color == BLACK))
+                {
+                    s.color = RED;
+                    this.removeRestructure(x.parent);
+                }
+                else if ((x.parent.color == RED) &&
+                    (s.color == BLACK) &&
+                    (s.left.color == BLACK) &&
+                    (s.right.color == BLACK))
+                {
+                    s.color = RED;
+                    x.parent.color = BLACK;
+                }
+                else
+                {
+                    if ((x == x.parent.left) &&
+                        (s.right.color == BLACK) &&
+                        (s.left.color == RED))
+                    {
+                        s.color = RED;
+                        s.left.color = BLACK;
+                        this.rotate(s, RIGHT);
+                    } else if ((x == x.parent.right) &&
+                        (s.left.color == BLACK) &&
+                        (s.right.color == RED))
+                    {
+                        s.color = RED;
+                        s.right.color = BLACK;
+                        this.rotate(s, LEFT);
+                    }
+
+                    s.color = x.parent.color;
+                    x.parent.color = BLACK;
+
+                    if (x == x.parent.left)
+                    {
+                        s.right.color = BLACK;
+                        this.rotate(x.parent, LEFT);
+                    }
+                    else
+                    {
+                        s.left.color = BLACK;
+                        this.rotate(x.parent, RIGHT);
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region [ public methods ]
@@ -382,12 +447,7 @@ namespace HashTable
         {
             Node x, y;
 
-
-
-
-
-
-            //// wikipedias:
+            //// Eclipse:
             //// if node has two children, trade it with minimum in right subtree
             //if ((target.left != null) && (target.right != null))
             //{
@@ -403,33 +463,46 @@ namespace HashTable
             //    x = target.left;
             //}
 
-            //// remove target from subtree, replace with new right child
-            //this.transplant(target, x);
-
-            //// restructure about the replacing child node
+            //// fixup
             //if (target.color == BLACK)
             //{
-            //    if ((x != null) && (x.color == RED))
-            //    {
-            //        x.color = BLACK;
-            //    }
-            //    else if (this.root != x) // x is Black
-            //    {
-            //        y = this.sibling(x);
-            //        if (y.color == RED)
-            //        {
-            //            x.parent.color = RED;
-            //            y.color = BLACK;
-            //            if (x == x.parent.left)
-            //                this.rotate(x.parent, LEFT);
-            //            else
-            //                this.rotate(x.parent, RIGHT);
-            //        }
-            //        y = this.sibling(x);
-            //        if (x.parent.color == BLACK
-            //    }
+
             //}
 
+
+            //if (target.parent == null)
+            //    this.root = x;
+            //else
+            //    this.transplant(x);
+
+
+            // wikipedias:
+            // if node has two children, trade it with minimum in right subtree
+            if ((target.left != null) && (target.right != null))
+            {
+                this.trade(target, this.getMin(target.right));
+                x = target.right;
+            }
+            else if (target.right != null)
+            {
+                x = target.right;
+            }
+            else
+            {
+                x = target.left;
+            }
+
+            // remove target from subtree, replace with new right child
+            this.transplant(target, x);
+
+            // restructure about the replacing child node
+            if (target.color == BLACK)
+            {
+                if ((x != null) && (x.color == RED))
+                    x.color = BLACK;
+                else
+                    this.removeRestructure(x);
+            }
 
 
             //// algos:
