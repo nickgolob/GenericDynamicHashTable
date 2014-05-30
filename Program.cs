@@ -46,10 +46,12 @@ namespace HashTable
 
         private bucket[] currentTable, prevTable;
         private int currentEntries, prevEntries, currentMaxSize, prevMaxSize;
+
         private int resizeFactor;
         private float loadFactor;
-
         private bool duplicateKeys;
+
+        private bucket resizeLink;
 
         #endregion
 
@@ -101,6 +103,8 @@ namespace HashTable
             this.loadFactor = loadFactor;
 
             this.duplicateKeys = duplicateKeys;
+
+            this.resizeLink = null;
         }
 
         /// <summary>
@@ -120,22 +124,55 @@ namespace HashTable
         #region [ private utilities ]
 
         /// <summary>
+        /// applies hash function to a key, returns bucket
+        /// </summary>
+        /// <param name="current">
+        /// a boolean denoting which table should be mapped to.
+        /// true designates the current table, false designates the
+        /// previous table.
+        /// </param>
+        private bucket hash(K key, bool current)
+        {
+            if (current)
+                return this.currentTable[this.map(key, this.currentMaxSize) % this.currentMaxSize];
+            else
+                return this.prevTable[this.map(key, this.prevMaxSize) % this.prevMaxSize];
+        }
+
+
+        /// <summary>
         /// creates a new hash table
-        ///  - the size of the new table will be the previous size
-        ///     times the resizing factor;
-        ///  - this function assumes the old table is empty, as the
+        /// </summary>
+        /// <param name="expand">
+        /// boolean denoting whether the table should expand.
+        /// If false, the table will instead contract
+        /// </param>
+        /// <remarks>
+        /// - the size of the new table will be the previous size
+        ///     times or dicided by the resizing factor
+        /// - in an EXPANSION:
+        ///     this function assumes the old table is empty, as the
         ///     current table will now become the old table, and
         ///     the old table will be deallocated.
-        /// </summary>
-        private void expand()
+        /// - in a CONTRACTION:
+        /// 
+        /// </remarks>
+        private void resize(bool expand)
         {
-            this.prevEntries = this.currentEntries;
-            this.prevMaxSize = this.currentMaxSize;
-            this.prevTable = this.currentTable;
+            if (expand)
+            {
+                this.prevEntries = this.currentEntries;
+                this.prevMaxSize = this.currentMaxSize;
+                this.prevTable = this.currentTable;
 
-            this.currentEntries = 0;
-            this.currentMaxSize = this.prevMaxSize * this.resizeFactor;
-            this.currentTable = new bucket[currentMaxSize];
+                this.currentEntries = 0;
+                this.currentMaxSize = this.prevMaxSize * this.resizeFactor;
+                this.currentTable = new bucket[currentMaxSize];
+            }
+            else
+            {
+
+            }
         }
 
         #endregion
@@ -144,12 +181,67 @@ namespace HashTable
 
         public void insert(K key, V value)
         {
-            
+            // resize table if needed
+            if ((this.currentEntries + 1) / this.currentMaxSize > this.loadFactor)
+                this.resize(true);
+
+            // insert element
+            bucket target = this.hash(key, true);
+            target.entries += 1;
+            target.chain.insert(key, value);
+
+            if (prevEntries > 0) {
+
+                // scan previous table
+                
+
+            }
+
+
         }
 
-        public void search(K key)
+
+        /// <summary>
+        /// return the value of an element in the table
+        /// </summary>
+        /// <exception cref="key not found">
+        /// is thrown if no element with the specified key
+        /// is in the table.
+        /// </exception>
+        public V search(K key)
         {
-            
+            bool firstTable;
+
+            if (this.prevEntries == 0)
+                return this.hash(key, true).chain.search(key).value;
+            else if (this.currentEntries >= this.prevEntries)
+                firstTable = true;
+            else
+                firstTable = false;
+
+            try
+            {
+                return this.hash(key, firstTable).chain.search(key).value;
+            }
+            catch
+            {
+                return this.hash(key, !firstTable).chain.search(key).value;
+            }
+        }
+        /// <summary>
+        /// return whether or not an element is in the table
+        /// </summary>
+        public bool exists(K key)
+        {
+            try
+            {
+                V test = this.search(key);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         public void delete(K Key)
