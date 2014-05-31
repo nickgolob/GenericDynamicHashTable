@@ -275,6 +275,18 @@ namespace HashTable
             }
             throw new Exception("key not found");
         }
+        public bool exists(K key)
+        {
+            try
+            {
+                this.search(key);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
 
         /// <summary>
         /// removes the targeted node from tree, and restructures the tree

@@ -42,16 +42,26 @@ namespace HashTable
 
         #region [ private attributes ]
 
+        /* hash function */
         private Func<K, int, int> map;
 
+        /* tables and sizes */
         private bucket[] currentTable, prevTable;
         private int currentEntries, prevEntries, currentMaxSize, prevMaxSize;
 
+        /* constants */
         private int resizeFactor;
         private float loadFactor;
         private bool duplicateKeys;
 
+        /* incremental resizing attributes */
+        private int resizeIndex;
         private bucket resizeLink;
+        private bucket resizeLast;
+
+        /* single entry cache, for rapid exists/search calls
+         * and displacement across tables */
+        private RedBlackTree<K, V>.Node cache;
 
         #endregion
 
@@ -104,6 +114,7 @@ namespace HashTable
 
             this.duplicateKeys = duplicateKeys;
 
+            this.resizeIndex = 0;
             this.resizeLink = null;
         }
 
@@ -173,12 +184,55 @@ namespace HashTable
             {
 
             }
+
+            this.resizeIndex = 0;
+            this.resizeLink = null;
+            this.resizeLast = null;
+        }
+
+
+        /// <summary>
+        /// performes the displacement from old to new table in an
+        /// incrmemental resize
+        /// </summary>
+        private void displace()
+        {
+            if (this.prevEntries < 0) 
+            {
+                /* table scan / bucket linking */
+                if (this.resizeIndex < this.prevMaxSize)
+                {
+                    for (int i = 0;
+                        this.resizeIndex < this.prevMaxSize &&
+                        i < Math.Ceiling((this.prevMaxSize) / (this.currentMaxSize * this.loadFactor));
+                        i++, this.resizeIndex++)
+                    {
+                        if (this.prevTable[this.resizeIndex].entries > 0)
+                        {
+                            if (this.resizeLink == null)
+                                this.resizeLink = this.prevTable[this.resizeIndex];
+                            else
+                                this.resizeLast.marker = this.prevTable[this.resizeIndex];
+                            this.resizeLast = this.prevTable[this.resizeIndex];
+                        }
+                    }
+                }
+
+                /* node displacement */
+                for (int i = 0;
+                    i < Math.Cieling((this.prevMaxSize))
+
+            }
+
         }
 
         #endregion
 
         #region [ public methods ]
 
+        /// <summary>
+        /// insert a new entry in the hash table
+        /// </summary>
         public void insert(K key, V value)
         {
             // resize table if needed
@@ -190,14 +244,7 @@ namespace HashTable
             target.entries += 1;
             target.chain.insert(key, value);
 
-            if (prevEntries > 0) {
-
-                // scan previous table
-                
-
-            }
-
-
+            displace();
         }
 
 
@@ -210,41 +257,55 @@ namespace HashTable
         /// </exception>
         public V search(K key)
         {
-            bool firstTable;
+            /* check cache */
+            if (key.CompareTo(this.cache.key) == 0)
+                return this.cache.value;
 
-            if (this.prevEntries == 0)
-                return this.hash(key, true).chain.search(key).value;
-            else if (this.currentEntries >= this.prevEntries)
-                firstTable = true;
-            else
-                firstTable = false;
+            /* search for it, cache it if it exists */
+            if (!this.exists(key))
+                throw new Exception("key not found");
 
-            try
-            {
-                return this.hash(key, firstTable).chain.search(key).value;
-            }
-            catch
-            {
-                return this.hash(key, !firstTable).chain.search(key).value;
-            }
+            /* return the cached result */
+            return this.cache.value;
         }
         /// <summary>
         /// return whether or not an element is in the table
         /// </summary>
         public bool exists(K key)
         {
+            RedBlackTree<K, V>.Node Result;
+
+            /* check if it exists */
             try
             {
-                V test = this.search(key);
-                return true;
+                result = this.hash(key, true).chain.search(key);
             }
-            catch
+            catch (Exception Ex)
             {
+                if (this.prevEntries > 0)
+                    try
+                    {
+                        result = this.hash(key, true).chain.search(key);
+                    }
+                    catch
+                    {
+                    }
                 return false;
             }
+
+            /* cache results */
+            this.cache = result;
+
+            return true;
         }
 
-        public void delete(K Key)
+        /// <summary>
+        /// delete a node from the table
+        /// </summary>
+        /// <exception cref="key not found">
+        /// thrown if key is not in table
+        /// </exception>
+        public void delete(K key)
         {
 
         }
