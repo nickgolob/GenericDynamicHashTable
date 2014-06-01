@@ -14,14 +14,14 @@ namespace HashTable
         private const int DEFAULT_RESIZE_FACTOR = 2;
         private const float DEFAULT_MAX_LOAD = 2.0F;
 
-        private const bool A = true, B = false;
+        private const bool CURRENT = true, PREVIOUS = false;
 
         private class bucket
         {
             #region [ attributes ]
             public int entries;
             public RedBlackTree<K, V> chain;
-            public bucket marker;
+            public bucket link;
             #endregion
 
             #region [ constructors ]
@@ -29,7 +29,7 @@ namespace HashTable
             {
                 this.entries = 0;
                 this.chain = new RedBlackTree<K, V>();
-                this.marker = null;
+                this.link = null;
             }
             #endregion
 
@@ -56,12 +56,13 @@ namespace HashTable
 
         /* incremental resizing attributes */
         private int resizeIndex;
-        private bucket resizeLink;
+        private bucket resizeHead;
         private bucket resizeLast;
 
         /* single entry cache, for rapid exists/search calls
          * and displacement across tables */
         private RedBlackTree<K, V>.Node cache;
+        private bool cacheTable;
 
         #endregion
 
@@ -102,6 +103,9 @@ namespace HashTable
             int initialSize = DEFAULT_INITIAL_SIZE, 
             bool duplicateKeys = false)
         {
+            if ((loadFactor <= 0) || (initialSize < 0))
+                throw new Exception("bad parameters");
+
             this.map = map;
 
             this.currentTable = new bucket[initialSize];
@@ -115,7 +119,7 @@ namespace HashTable
             this.duplicateKeys = duplicateKeys;
 
             this.resizeIndex = 0;
-            this.resizeLink = null;
+            this.resizeHead = null;
         }
 
         /// <summary>
@@ -137,17 +141,26 @@ namespace HashTable
         /// <summary>
         /// applies hash function to a key, returns bucket
         /// </summary>
-        /// <param name="current">
+        /// <param name="table">
         /// a boolean denoting which table should be mapped to.
         /// true designates the current table, false designates the
         /// previous table.
         /// </param>
-        private bucket hash(K key, bool current)
+        /// <param name="create">
+        /// boolean designating whether or not a bucket should be instantiated
+        /// if hash maps to a null bucket. (i.e insertion should be true)
+        /// </param>
+        private bucket hash(K key, bool table, bool create)
         {
-            if (current)
-                return this.currentTable[this.map(key, this.currentMaxSize) % this.currentMaxSize];
+            int index = this.map(key, this.currentMaxSize) % this.currentMaxSize;
+            if (table == CURRENT)
+            {
+                if (create && (this.currentTable[index] == null))
+                    this.currentTable[index] = new bucket();
+                return this.currentTable[index];
+            }
             else
-                return this.prevTable[this.map(key, this.prevMaxSize) % this.prevMaxSize];
+                return this.prevTable[index];
         }
 
 
@@ -186,7 +199,7 @@ namespace HashTable
             }
 
             this.resizeIndex = 0;
-            this.resizeLink = null;
+            this.resizeHead = null;
             this.resizeLast = null;
         }
 
@@ -209,10 +222,10 @@ namespace HashTable
                     {
                         if (this.prevTable[this.resizeIndex].entries > 0)
                         {
-                            if (this.resizeLink == null)
-                                this.resizeLink = this.prevTable[this.resizeIndex];
+                            if (this.resizeHead == null)
+                                this.resizeHead = this.prevTable[this.resizeIndex];
                             else
-                                this.resizeLast.marker = this.prevTable[this.resizeIndex];
+                                this.resizeLast.link = this.prevTable[this.resizeIndex];
                             this.resizeLast = this.prevTable[this.resizeIndex];
                         }
                     }
@@ -220,7 +233,16 @@ namespace HashTable
 
                 /* node displacement */
                 for (int i = 0;
-                    i < Math.Cieling((this.prevMaxSize))
+                    (this.resizeHead != null) && (this.resizeHead.entries > 0) &&
+                    i < Math.Ceiling((double) 2 / (1 - this.resizeFactor));
+                    i++)
+                {
+                    RedBlackTree<K, V>.Node target = this.resizeHead.chain.root;
+                    this.resizeHead.chain.remove(target);
+                    this.resizeHead.entries -= 1;
+                    if (resizeHead.entries == 0)
+                        this.resizeHead = this.resizeHead.link;
+                }
 
             }
 
@@ -240,13 +262,12 @@ namespace HashTable
                 this.resize(true);
 
             // insert element
-            bucket target = this.hash(key, true);
+            bucket target = this.hash(key, CURRENT, true);
             target.entries += 1;
             target.chain.insert(key, value);
 
-            displace();
+            this.displace();
         }
-
 
         /// <summary>
         /// return the value of an element in the table
@@ -268,33 +289,39 @@ namespace HashTable
             /* return the cached result */
             return this.cache.value;
         }
+
         /// <summary>
-        /// return whether or not an element is in the table
+        /// return whether or not an element is in the table.
         /// </summary>
+        /// <remarks>
+        /// If it exists, it will cache the Node, and the current table info.
+        /// Another call to exists will overwrite cache.
+        /// </remarks>
         public bool exists(K key)
         {
-            RedBlackTree<K, V>.Node Result;
+            RedBlackTree<K, V>.Node result;
 
             /* check if it exists */
             try
             {
-                result = this.hash(key, true).chain.search(key);
+                result = this.hash(key, CURRENT, false).chain.search(key);
+                this.cacheTable = CURRENT;
+                this.cache = result;
             }
-            catch (Exception Ex)
+            catch
             {
                 if (this.prevEntries > 0)
                     try
                     {
-                        result = this.hash(key, true).chain.search(key);
+                        result = this.hash(key, PREVIOUS, false).chain.search(key);
+                        this.cacheTable = PREVIOUS;
+                        this.cache = result;
                     }
                     catch
                     {
                     }
                 return false;
             }
-
-            /* cache results */
-            this.cache = result;
 
             return true;
         }
@@ -307,7 +334,14 @@ namespace HashTable
         /// </exception>
         public void delete(K key)
         {
+            if (!this.exists(key))
+                throw new Exception("key not found");
 
+            bucket target = this.hash(key, this.cacheTable, false);
+            target.entries -= 1;
+            target.chain.remove(this.cache);
+
+            this.displace();
         }
 
         #endregion
