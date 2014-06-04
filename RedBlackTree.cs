@@ -62,7 +62,7 @@ namespace HashTable
         #endregion
 
         #region [ attributes ]
-        private Node root;
+        public Node root;
         #endregion
 
         #region [ constructors ]
@@ -392,7 +392,8 @@ namespace HashTable
                         }
                     }
                 }
-                x.color = BLACK;
+                if (x != null)
+                    x.color = BLACK;
             }
             #endregion
 
