@@ -12,7 +12,7 @@ namespace HashTable
 
         private const int DEFAULT_INITIAL_SIZE = 1;
         private const int DEFAULT_RESIZE_FACTOR = 2;
-        private const float DEFAULT_MAX_LOAD = 2.0F;
+        private const float DEFAULT_MAX_LOAD = 1.0F;
 
         private const bool CURRENT = true, PREVIOUS = false;
 
@@ -53,16 +53,18 @@ namespace HashTable
         private int resizeFactor;
         private float loadFactor;
         private bool duplicateKeys;
+        private int initialSize;
 
         /* incremental resizing attributes */
-        private int resizeIndex;
-        private bucket resizeHead;
-        private bucket resizeLast;
+        private int prevThreshold;  // initial number of elements in prev table
+        private int resizeIndex;    // current bucket index for prev table scan
+        private bucket resizeHead;  // reference to bucket at head of chain
+        private bucket resizeLast;  // reference to last bucked in chain
 
         /* single entry cache, for rapid exists/search calls
          * and displacement across tables */
-        private RedBlackTree<K, V>.Node cache;
-        private bool cacheTable;
+        private RedBlackTree<K, V>.Node cache;  // reference to cached node
+        private bool cacheTable;                // denotes table chached element is in
 
         #endregion
 
@@ -108,6 +110,7 @@ namespace HashTable
 
             this.map = map;
 
+            this.initialSize = initialSize;
             this.currentTable = new bucket[initialSize];
             this.currentEntries = 0;
             this.prevEntries = 0;
@@ -152,17 +155,17 @@ namespace HashTable
         /// </param>
         private bucket hash(K key, bool table, bool create)
         {
-            int index = this.map(key, this.currentMaxSize) % this.currentMaxSize;
+            int index;
             if (table == CURRENT)
             {
+                index = this.map(key, this.currentMaxSize) % this.currentMaxSize;
                 if (create && (this.currentTable[index] == null))
                     this.currentTable[index] = new bucket();
                 return this.currentTable[index];
             }
             else
-                return this.prevTable[index];
+                return this.prevTable[this.map(key, this.prevMaxSize) % this.prevMaxSize];
         }
-
 
         /// <summary>
         /// creates a new hash table
@@ -183,42 +186,62 @@ namespace HashTable
         /// </remarks>
         private void resize(bool expand)
         {
+            this.prevThreshold = this.currentEntries;
+
+            this.prevEntries = this.currentEntries;
+            this.prevMaxSize = this.currentMaxSize;
+            this.prevTable = this.currentTable;
+            this.currentEntries = 0;
+
             if (expand)
-            {
-                this.prevEntries = this.currentEntries;
-                this.prevMaxSize = this.currentMaxSize;
-                this.prevTable = this.currentTable;
-
-                this.currentEntries = 0;
                 this.currentMaxSize = this.prevMaxSize * this.resizeFactor;
-                this.currentTable = new bucket[currentMaxSize];
-            }
             else
-            {
+                this.currentMaxSize = (int)Math.Ceiling((double) this.prevMaxSize / this.resizeFactor);
 
-            }
+            this.currentTable = new bucket[currentMaxSize];
 
             this.resizeIndex = 0;
             this.resizeHead = null;
             this.resizeLast = null;
         }
 
-
         /// <summary>
         /// performes the displacement from old to new table in an
-        /// incrmemental resize
+        /// incrmemental resize. This will involve table scanning
+        /// and bucket linking, as well as actually movement of
+        /// previous entries to new table.
         /// </summary>
         private void displace()
         {
-            if (this.prevEntries < 0) 
+            for (int i = 0; 
+                this.prevEntries > 0 && i < Math.Ceiling((double)2 / (this.resizeFactor - 1));
+                i++)
             {
-                /* table scan / bucket linking */
-                if (this.resizeIndex < this.prevMaxSize)
+                if (this.resizeHead != null)
                 {
-                    for (int i = 0;
+                    /* node displacement */
+                    RedBlackTree<K, V>.Node target = this.resizeHead.chain.root;
+
+                    /* removal */
+                    this.resizeHead.chain.remove(target);
+                    this.resizeHead.entries -= 1;
+                    if (resizeHead.entries == 0)
+                        this.resizeHead = this.resizeHead.link;
+                    this.prevEntries -= 1;
+
+                    /* re-insertion */
+                    bucket dest = this.hash(target.key, CURRENT, true);
+                    dest.chain.insert(target);
+                    dest.entries += 1;
+                    this.currentEntries += 1;
+                }
+                else
+                {
+                    /* table scan / bucket linking */
+                    for (int j = 0;
                         this.resizeIndex < this.prevMaxSize &&
-                        i < Math.Ceiling((this.prevMaxSize) / (this.currentMaxSize * this.loadFactor));
-                        i++, this.resizeIndex++)
+                        j < Math.Ceiling((double)this.prevMaxSize / this.prevThreshold);
+                        j++, this.resizeIndex++)
                     {
                         if (this.prevTable[this.resizeIndex].entries > 0)
                         {
@@ -230,22 +253,7 @@ namespace HashTable
                         }
                     }
                 }
-
-                /* node displacement */
-                for (int i = 0;
-                    (this.resizeHead != null) && (this.resizeHead.entries > 0) &&
-                    i < Math.Ceiling((double) 2 / (1 - this.resizeFactor));
-                    i++)
-                {
-                    RedBlackTree<K, V>.Node target = this.resizeHead.chain.root;
-                    this.resizeHead.chain.remove(target);
-                    this.resizeHead.entries -= 1;
-                    if (resizeHead.entries == 0)
-                        this.resizeHead = this.resizeHead.link;
-                }
-
             }
-
         }
 
         #endregion
@@ -257,15 +265,21 @@ namespace HashTable
         /// </summary>
         public void insert(K key, V value)
         {
-            // resize table if needed
-            if ((this.currentEntries + 1) / this.currentMaxSize > this.loadFactor)
+
+            /* expand table if needed */
+            if ((double)(this.currentEntries + 1) / this.currentMaxSize > this.loadFactor)
                 this.resize(true);
 
-            // insert element
+            /* insert element */
             bucket target = this.hash(key, CURRENT, true);
-            target.entries += 1;
             target.chain.insert(key, value);
+            target.entries += 1;
+            this.currentEntries += 1;
 
+            /* whipe cache */
+            this.cache = null;
+
+            /* incremental structuring */
             this.displace();
         }
 
@@ -334,13 +348,24 @@ namespace HashTable
         /// </exception>
         public void delete(K key)
         {
+            /* find entry */
             if (!this.exists(key))
                 throw new Exception("key not found");
 
+            /* remove entry */
             bucket target = this.hash(key, this.cacheTable, false);
             target.entries -= 1;
             target.chain.remove(this.cache);
 
+            /* wipe cache */
+            this.cache = null;
+
+            /* contract table if needed */
+            if ((this.currentEntries - 1) < this.currentMaxSize * this.loadFactor / Math.Pow(this.resizeFactor, 2) &&
+                (this.currentMaxSize / this.resizeFactor > this.initialSize))
+                this.resize(false);
+
+            /* incremental structuring */
             this.displace();
         }
 
@@ -353,7 +378,7 @@ namespace HashTable
         static void Main(string[] args)
         {
 
-            // tests:
+            /* few tree tests: */
 
             RedBlackTree<int, char> tree = new RedBlackTree<int,char>();
 
@@ -369,7 +394,28 @@ namespace HashTable
             tree.delete(7);
             tree.delete(6);
             tree.delete(5);
+            tree.delete(2);
+            tree.delete(3);
 
+            /* table tests: */
+
+            HashTable<int, char> table = new HashTable<int, char>(delegate(int k) { return k; });
+
+            table.insert(1, 'A');
+            table.insert(2, 'B');
+
+            HashTable<int, char> table2 = new HashTable<int, char>(delegate(int k) { return 0; });
+
+            table2.insert(1, 'A');
+            table2.insert(2, 'B');
+            table2.insert(3, 'C');
+            table2.insert(4, 'D');
+            table2.insert(5, 'A');
+            table2.insert(6, 'B');
+            table2.insert(7, 'C');
+            table2.insert(8, 'D');
+
+            Console.WriteLine("wutup");
         }
     }
 }
