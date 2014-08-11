@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+////////////////////////////////////
+// 
+// Red Black Tree data structure
+// written by Nick Golob, 4/12/2014
+// 
+////////////////////////////////////
 
 namespace HashTable
 {
+    using System;
+
     public class RedBlackTree<K, V> where K : IComparable
     {
         #region [ internal declarations ]
@@ -195,7 +198,8 @@ namespace HashTable
 
             #region [ BST insert ]
             x = this.root;
-            while (x != null) {
+            while (x != null)
+            {
                 y = x;
                 if (x.key.CompareTo(entry.key) < 0)
                     x = x.right;
