@@ -1,11 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+////////////////////////////////////
+// 
+// Dynamic Hash Table data structure
+// written by Nick Golob, 4/14/2014
+// 
+////////////////////////////////////
 
 namespace HashTable
 {
+    using System;
+
     public class HashTable<K, V> where K : IComparable
     {
         #region [ internal declarations ]
@@ -100,9 +103,9 @@ namespace HashTable
         ///     and delete the first found if deleted.
         /// </param>
         public HashTable(
-            Func<K, int, int> map, 
-            float loadFactor = DEFAULT_MAX_LOAD, 
-            int initialSize = DEFAULT_INITIAL_SIZE, 
+            Func<K, int, int> map,
+            float loadFactor = DEFAULT_MAX_LOAD,
+            int initialSize = DEFAULT_INITIAL_SIZE,
             bool duplicateKeys = false)
         {
             if ((loadFactor <= 0) || (initialSize < 0))
@@ -134,8 +137,7 @@ namespace HashTable
             float loadFactor = DEFAULT_MAX_LOAD,
             int initialSize = DEFAULT_INITIAL_SIZE,
             bool duplicateKeys = false)
-            : this( delegate(K key, int n) { return map(key); },
-                    loadFactor, initialSize, duplicateKeys) { }
+            : this((key, n) => map(key), loadFactor, initialSize, duplicateKeys) { }
 
         #endregion
 
@@ -155,10 +157,9 @@ namespace HashTable
         /// </param>
         private bucket hash(K key, bool table, bool create)
         {
-            int index;
             if (table == CURRENT)
             {
-                index = this.map(key, this.currentMaxSize) % this.currentMaxSize;
+                int index = this.map(key, this.currentMaxSize) % this.currentMaxSize;
                 if (create && (this.currentTable[index] == null))
                     this.currentTable[index] = new bucket();
                 return this.currentTable[index];
@@ -196,7 +197,7 @@ namespace HashTable
             if (expand)
                 this.currentMaxSize = this.prevMaxSize * this.resizeFactor;
             else
-                this.currentMaxSize = (int)Math.Ceiling((double) this.prevMaxSize / this.resizeFactor);
+                this.currentMaxSize = (int)Math.Ceiling((double)this.prevMaxSize / this.resizeFactor);
 
             this.currentTable = new bucket[currentMaxSize];
 
@@ -213,7 +214,7 @@ namespace HashTable
         /// </summary>
         private void displace()
         {
-            for (int i = 0; 
+            for (int i = 0;
                 this.prevEntries > 0 && i < Math.Ceiling((double)2 / (this.resizeFactor - 1));
                 i++)
             {
@@ -243,14 +244,13 @@ namespace HashTable
                         j < Math.Ceiling((double)this.prevMaxSize / this.prevThreshold);
                         j++, this.resizeIndex++)
                     {
-                        if (this.prevTable[this.resizeIndex].entries > 0)
-                        {
-                            if (this.resizeHead == null)
-                                this.resizeHead = this.prevTable[this.resizeIndex];
-                            else
-                                this.resizeLast.link = this.prevTable[this.resizeIndex];
-                            this.resizeLast = this.prevTable[this.resizeIndex];
-                        }
+                        if (this.prevTable[this.resizeIndex].entries <= 0) 
+                            continue;
+                        if (this.resizeHead == null)
+                            this.resizeHead = this.prevTable[this.resizeIndex];
+                        else
+                            this.resizeLast.link = this.prevTable[this.resizeIndex];
+                        this.resizeLast = this.prevTable[this.resizeIndex];
                     }
                 }
             }
@@ -276,7 +276,7 @@ namespace HashTable
             target.entries += 1;
             this.currentEntries += 1;
 
-            /* whipe cache */
+            /* wipe cache */
             this.cache = null;
 
             /* incremental structuring */
@@ -330,6 +330,7 @@ namespace HashTable
                         result = this.hash(key, PREVIOUS, false).chain.search(key);
                         this.cacheTable = PREVIOUS;
                         this.cache = result;
+                        return true;
                     }
                     catch
                     {
@@ -373,49 +374,4 @@ namespace HashTable
 
     }
 
-    class Program
-    {
-        static void Main(string[] args)
-        {
-
-            /* few tree tests: */
-
-            RedBlackTree<int, char> tree = new RedBlackTree<int,char>();
-
-            tree.insert(2, 'B');
-            tree.insert(1, 'A');
-            tree.insert(3, 'C');
-            tree.insert(4, 'D');
-            tree.insert(5, 'E');
-            tree.insert(6, 'F');
-            tree.insert(7, 'G');
-            tree.delete(4);
-            tree.delete(1);
-            tree.delete(7);
-            tree.delete(6);
-            tree.delete(5);
-            tree.delete(2);
-            tree.delete(3);
-
-            /* table tests: */
-
-            HashTable<int, char> table = new HashTable<int, char>(delegate(int k) { return k; });
-
-            table.insert(1, 'A');
-            table.insert(2, 'B');
-
-            HashTable<int, char> table2 = new HashTable<int, char>(delegate(int k) { return 0; });
-
-            table2.insert(1, 'A');
-            table2.insert(2, 'B');
-            table2.insert(3, 'C');
-            table2.insert(4, 'D');
-            table2.insert(5, 'A');
-            table2.insert(6, 'B');
-            table2.insert(7, 'C');
-            table2.insert(8, 'D');
-
-            Console.WriteLine("wutup");
-        }
-    }
 }
