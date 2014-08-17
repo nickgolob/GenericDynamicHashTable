@@ -16,14 +16,11 @@ namespace HashTable
 
         public class Node
         {
-            #region [ attributes ]
             public K key;
             public V value;
             public Node left, right, parent;
             public Boolean color;
-            #endregion
 
-            #region [ constructors ]
             public Node(K key, V value)
             {
                 this.key = key;
@@ -33,9 +30,7 @@ namespace HashTable
                 this.parent = null;
                 this.color = BLACK;
             }
-            #endregion
 
-            #region [ methods ]
             public void quickSet()
             {
                 this.left = null;
@@ -60,7 +55,6 @@ namespace HashTable
                 else
                     return grandparent.left;
             }
-            #endregion
         }
         #endregion
 
