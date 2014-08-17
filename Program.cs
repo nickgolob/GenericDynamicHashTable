@@ -21,24 +21,16 @@ namespace HashTable
 
         private class bucket
         {
-            #region [ attributes ]
             public int entries;
             public RedBlackTree<K, V> chain;
             public bucket link;
-            #endregion
 
-            #region [ constructors ]
             public bucket()
             {
                 this.entries = 0;
                 this.chain = new RedBlackTree<K, V>();
                 this.link = null;
             }
-            #endregion
-
-            #region [ methods ]
-
-            #endregion
         }
 
         #endregion
@@ -99,7 +91,7 @@ namespace HashTable
         ///  - duplicate keys is an optional paramerer indicating whether
         ///     duplicate keys are to be accepted.
         ///  - behavior of the hash table, if duplicate keys are to be
-        ///     accepted will be to return the first found is searched,
+        ///     accepted will be to return the first found if searched,
         ///     and delete the first found if deleted.
         /// </param>
         public HashTable(
@@ -129,7 +121,7 @@ namespace HashTable
         }
 
         /// <summary>
-        /// constructor with hash function ommitting the unconventional
+        /// constructor with hash function omitting the unconventional
         /// second argument
         /// </summary>
         public HashTable(
@@ -178,12 +170,6 @@ namespace HashTable
         /// <remarks>
         /// - the size of the new table will be the previous size
         ///     times or dicided by the resizing factor
-        /// - in an EXPANSION:
-        ///     this function assumes the old table is empty, as the
-        ///     current table will now become the old table, and
-        ///     the old table will be deallocated.
-        /// - in a CONTRACTION:
-        /// 
         /// </remarks>
         private void resize(bool expand)
         {
@@ -207,10 +193,12 @@ namespace HashTable
         }
 
         /// <summary>
-        /// performes the displacement from old to new table in an
+        /// performs the displacement from old to new table in an
         /// incrmemental resize. This will involve table scanning
         /// and bucket linking, as well as actually movement of
-        /// previous entries to new table.
+        /// previous entries to new table. Operations are evenly
+        /// divided across each displace() call, resulting in
+        /// constant time for each.
         /// </summary>
         private void displace()
         {
@@ -315,30 +303,32 @@ namespace HashTable
         {
             RedBlackTree<K, V>.Node result;
 
-            /* check if it exists */
+            /* check if it exists in current table */
             try
             {
                 result = this.hash(key, CURRENT, false).chain.search(key);
                 this.cacheTable = CURRENT;
                 this.cache = result;
+                return true;
             }
             catch
             {
-                if (this.prevEntries > 0)
-                    try
-                    {
-                        result = this.hash(key, PREVIOUS, false).chain.search(key);
-                        this.cacheTable = PREVIOUS;
-                        this.cache = result;
-                        return true;
-                    }
-                    catch
-                    {
-                    }
-                return false;
+            }
+            
+            /* check if it exists in previous table */
+            if (this.prevEntries == 0) return false;
+            try
+            {
+                result = this.hash(key, PREVIOUS, false).chain.search(key);
+                this.cacheTable = PREVIOUS;
+                this.cache = result;
+                return true;
+            }
+            catch
+            {
             }
 
-            return true;
+            return false;
         }
 
         /// <summary>
